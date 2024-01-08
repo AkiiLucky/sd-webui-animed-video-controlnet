@@ -1,0 +1,3 @@
+    # prompt = '(anime screencap), white background, masterpiece, best quality' \
+    #          ' actual 8K portrait photo of gareth person,' \
+    #          ' <lora:lcm_lora_v15_weights:1>'
