@@ -1,6 +1,7 @@
 import io
 import cv2
 import base64
+import random
 import requests
 from PIL import Image
 import numpy as np
@@ -27,13 +28,18 @@ class ControlnetRequest:
     def build_body(self):
         self.body = {
             "prompt": self.prompt,
-            "negative_prompt": "(worst quality, low quality:1.3),bad body,long body,missing limb,disconnected limbs,extra legs,bad feet,extra arms,floating limbs,poorly drawn face,mutated hands,extra limb,poorly drawn hands,too many fingers,fused fingers,missing fingers,bad hands,mutated hands and fingers,malformed hands,deformed,mutated,disfigured,malformed limbs,cross-eyed,ugly,",
+            "negative_prompt": "(worst quality, low quality:1.2),bad body,long body,missing limb,disconnected limbs,extra legs,bad feet,extra arms,floating limbs,poorly drawn face,mutated hands,extra limb,poorly drawn hands,too many fingers,fused fingers,missing fingers,bad hands,mutated hands and fingers,malformed hands,deformed,mutated,disfigured,malformed limbs,cross-eyed,ugly,NSFW,",
             "batch_size": 1,
             "steps": 8,
             "cfg_scale": 1.5,
             # "width": 512,
             # "height": 512,
             "sampler_index": "LCM",
+            "seed": 4281519988,
+            "subseed": 4281519988,
+            "subseed_strength": 0,
+            "seed_resize_from_h": 4281519988,
+            "seed_resize_from_w": 4281519988,
             "alwayson_scripts": {
                 "controlnet": {
                     "args": [
@@ -55,9 +61,9 @@ class ControlnetRequest:
                         },
                         {
                             "enabled": True,
-                            "module": "lineart_anime",
+                            "module": "lineart_anime_denoise",
                             "model": "control_v11p_sd15s2_lineart_anime_fp16 [c58f338b]",
-                            "weight": 1,
+                            "weight": 0.7,
                             "image": self.read_image(),
                             "resize_mode": 1,
                             "lowvram": LOWVRAM,
@@ -73,6 +79,16 @@ class ControlnetRequest:
                 }
             }
         }
+        self.init_seed()
+
+    def init_seed(self):
+        self.body["seed"] = random.randint(1, 2147483647)
+
+    def reset_seed(self, seed):
+        self.body["seed"] = seed
+
+    def get_seed(self):
+        return self.body["seed"]
 
     def set_reference(self, reference_img):
         self.reference_img_path = reference_img
@@ -81,7 +97,7 @@ class ControlnetRequest:
                 "enabled": True,
                 "module": "reference_only",
                 "model": "none",
-                "weight": 0.9,
+                "weight": 1,
                 "image": self.read_reference_image(),
                 "resize_mode": 1,
                 "lowvram": LOWVRAM,
@@ -91,7 +107,8 @@ class ControlnetRequest:
                 "guidance_start": 0.0,
                 "guidance_end": 1.0,
                 "control_mode": 0,
-                "pixel_perfect": True
+                "pixel_perfect": True,
+                # r'Fidelity': 1.0 #改了precessor.py中的源码
             }
         )
 
@@ -186,6 +203,9 @@ def multi_frames_transfer(frames_folder, prompt, frames_num):
         image.save(f"{frames_transfer_folder}/{i}.png")
 
 
+def get_first_reference_img():
+    return "images/first_reference_img_7.png"
+
 # 逐帧风格转换 有参考
 def multi_frames_transfer_reference(frames_folder, prompt, frames_num=-1):
     count = count_files_in_folder(frames_folder)
@@ -195,17 +215,25 @@ def multi_frames_transfer_reference(frames_folder, prompt, frames_num=-1):
     frames_transfer_folder = f"{frames_folder}_transfer_reference"
     os.makedirs(frames_transfer_folder, exist_ok=True)
 
+    first_reference_img = get_first_reference_img()
+
     for i in range(frames_num):
         img_path = f"{frames_folder}/{i}.png"
         control_net = ControlnetRequest(prompt, img_path)
         control_net.build_body()
-        if i != 0:
-            control_net.set_reference(f"{frames_transfer_folder}/{i-1}.png")  # 参考第i-1张风格帧
+
+        # if i != 0:
+        #     control_net.set_reference(f"{frames_transfer_folder}/{i-1}.png")  # 参考第i-1张风格帧
+        # else:
+        #     control_net.set_reference(first_reference_img)  # 参考第1张风格图片
+
+        control_net.set_reference(first_reference_img)  # 参考同一张风格图片
+
         output = control_net.send_request()
         result = output['images'][0]
         image = Image.open(io.BytesIO(base64.b64decode(result.split(",", 1)[0])))
         image.save(f"{frames_transfer_folder}/{i}.png")
-
+        print(f"{i}.png saved to {frames_transfer_folder}")
 
 
 if __name__ == '__main__':
@@ -223,7 +251,7 @@ if __name__ == '__main__':
 
 
     video_path = "videos/video2.mp4"
-    prompt = "<lora:lcm_lora_v15_weights:1>,masterpiece,best quality,simple background,transparent background,basketball"
+    prompt = "<lora:lcm_lora_v15_weights:1>,masterpiece,best quality,highres,(simple white background),1girl,solo,blonde hair,blue eyes,a basketball,basketball uniform,anime screencap,"
 
     # 切割视频帧
     frames_folder = split_frames(video_path)
