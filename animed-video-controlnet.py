@@ -17,6 +17,7 @@ import os
 """
 
 LOWVRAM = False
+PIXEL_PERFECT = False
 
 class ControlnetRequest:
     def __init__(self, prompt, img_path):
@@ -36,10 +37,8 @@ class ControlnetRequest:
             # "height": 512,
             "sampler_index": "LCM",
             "seed": 4281519988,
-            "subseed": 4281519988,
-            "subseed_strength": 0,
-            "seed_resize_from_h": 4281519988,
-            "seed_resize_from_w": 4281519988,
+            # "seed_resize_from_h": 4281519988,
+            # "seed_resize_from_w": 4281519988,
             "alwayson_scripts": {
                 "controlnet": {
                     "args": [
@@ -57,13 +56,13 @@ class ControlnetRequest:
                             "guidance_start": 0.0,
                             "guidance_end": 1.0,
                             "control_mode": 0,  # 0均衡 1更偏向提示词 2更偏向 ControlNet
-                            "pixel_perfect": True
+                            "pixel_perfect": PIXEL_PERFECT
                         },
                         {
                             "enabled": True,
-                            "module": "lineart_anime_denoise",
+                            "module": "lineart_anime",
                             "model": "control_v11p_sd15s2_lineart_anime_fp16 [c58f338b]",
-                            "weight": 0.7,
+                            "weight": 1,
                             "image": self.read_image(),
                             "resize_mode": 1,
                             "lowvram": LOWVRAM,
@@ -73,7 +72,7 @@ class ControlnetRequest:
                             "guidance_start": 0.0,
                             "guidance_end": 1.0,
                             "control_mode": 1,  # 0均衡 1更偏向提示词 2更偏向 ControlNet
-                            "pixel_perfect": True
+                            "pixel_perfect": PIXEL_PERFECT
                         }
                     ]
                 }
@@ -90,7 +89,7 @@ class ControlnetRequest:
     def get_seed(self):
         return self.body["seed"]
 
-    def set_reference(self, reference_img):
+    def add_reference(self, reference_img):
         self.reference_img_path = reference_img
         self.body["alwayson_scripts"]["controlnet"]["args"].append(
             {
@@ -107,7 +106,7 @@ class ControlnetRequest:
                 "guidance_start": 0.0,
                 "guidance_end": 1.0,
                 "control_mode": 0,
-                "pixel_perfect": True,
+                "pixel_perfect": PIXEL_PERFECT
                 # r'Fidelity': 1.0 #改了precessor.py中的源码
             }
         )
@@ -223,11 +222,14 @@ def multi_frames_transfer_reference(frames_folder, prompt, frames_num=-1):
         control_net.build_body()
 
         # if i != 0:
-        #     control_net.set_reference(f"{frames_transfer_folder}/{i-1}.png")  # 参考第i-1张风格帧
+        #     control_net.add_reference(f"{frames_transfer_folder}/{i-1}.png")  # 参考第i-1张风格帧
         # else:
-        #     control_net.set_reference(first_reference_img)  # 参考第1张风格图片
+        #     control_net.add_reference(first_reference_img)  # 参考第1张风格图片
 
-        control_net.set_reference(first_reference_img)  # 参考同一张风格图片
+        control_net.add_reference(first_reference_img)  # 参考同一张风格图片
+
+        if i != 0:   # 参考前一张风格图片
+            control_net.add_reference(f"{frames_transfer_folder}/{i-1}.png")  # 参考第i-1张风格帧
 
         output = control_net.send_request()
         result = output['images'][0]
@@ -252,6 +254,7 @@ if __name__ == '__main__':
 
     video_path = "videos/video2.mp4"
     prompt = "<lora:lcm_lora_v15_weights:1>,masterpiece,best quality,highres,(simple white background),1girl,solo,blonde hair,blue eyes,a basketball,basketball uniform,anime screencap,"
+    # prompt = "<lora:lcm_lora_v15_weights:1>,masterpiece,best quality,highres,(simple white background),1girl,solo,white short hair,yellow eyes,a basketball,basketball uniform,anime screencap,"
 
     # 切割视频帧
     frames_folder = split_frames(video_path)
