@@ -6,6 +6,8 @@ import requests
 from PIL import Image
 import numpy as np
 import os
+from utils import sort_file_name, extract_frames, count_files_in_folder, extract_keyframes, concatenate_keyframes_to_video, generate_interpolated_frames
+
 
 """
     To use this example make sure you've done the following steps before executing:
@@ -80,15 +82,6 @@ class ControlnetRequest:
         }
         self.init_seed()
 
-    def init_seed(self):
-        self.body["seed"] = random.randint(1, 2147483647)
-
-    def reset_seed(self, seed):
-        self.body["seed"] = seed
-
-    def get_seed(self):
-        return self.body["seed"]
-
     def add_reference(self, reference_img):
         self.reference_img_path = reference_img
         self.body["alwayson_scripts"]["controlnet"]["args"].append(
@@ -111,6 +104,15 @@ class ControlnetRequest:
             }
         )
 
+    def init_seed(self):
+        self.body["seed"] = random.randint(1, 2147483647)
+
+    def reset_seed(self, seed):
+        self.body["seed"] = seed
+
+    def get_seed(self):
+        return self.body["seed"]
+
     def send_request(self):
         response = requests.post(url=self.url, json=self.body)
         return response.json()
@@ -128,7 +130,6 @@ class ControlnetRequest:
         return encoded_image
 
 
-
 # 单帧风格转换
 def single_frame_transfer(img_path, prompt):
     control_net = ControlnetRequest(prompt, img_path)
@@ -136,53 +137,6 @@ def single_frame_transfer(img_path, prompt):
     output = control_net.send_request()
     result = output['images'][0]
     return result
-
-
-# 切割视频帧序列
-def split_frames(video_path):
-    file_name = video_path.split("/")[-1]
-    file_name = f"{''.join(file_name.split('.')[0:-1])}_{file_name.split('.')[-1]}"
-    # 打开视频文件
-    cap = cv2.VideoCapture(video_path)
-
-    # 检查视频是否成功打开
-    if not cap.isOpened():
-        print("Error: Could not open video.")
-        exit()
-
-    # 创建保存帧的文件夹
-    frames_folder = f"outputs/video/{file_name}/frames"
-    os.makedirs(frames_folder, exist_ok=True)
-
-    # 读取视频的帧
-    frame_count = 0
-    while True:
-        ret, frame = cap.read()
-        # 如果没有更多的帧，则退出循环
-        if not ret:
-            break
-        # 保存每一帧为 PNG 文件
-        frame_path = os.path.join(frames_folder, f'{frame_count}.png')
-        cv2.imwrite(frame_path, frame)
-        frame_count += 1
-    # 关闭视频文件
-    cap.release()
-    print(f"{frame_count} frames extracted and saved to '{frames_folder}'.")
-    return frames_folder
-
-
-# 统计文件夹中的文件数量
-def count_files_in_folder(folder_path):
-    try:
-        # 使用 os.listdir() 获取文件夹中的所有文件和子文件夹
-        file_list = os.listdir(folder_path)
-        # 使用列表推导式过滤出文件，而不是子文件夹
-        files = [file for file in file_list if os.path.isfile(os.path.join(folder_path, file))]
-        # 返回文件数量
-        return len(files)
-    except FileNotFoundError:
-        print(f"Error: Folder '{folder_path}' not found.")
-        return None
 
 
 # 逐帧风格转换 无参考
@@ -203,39 +157,40 @@ def multi_frames_transfer(frames_folder, prompt, frames_num):
 
 
 def get_first_reference_img():
-    return "images/first_reference_img_7.png"
+    return "images/first_reference_img_8.png"
+
 
 # 逐帧风格转换 有参考
-def multi_frames_transfer_reference(frames_folder, prompt, frames_num=-1):
-    count = count_files_in_folder(frames_folder)
-    assert frames_num <= count
-    if frames_num == -1:  # 渲染所有帧
-        frames_num = count
+def multi_frames_transfer_reference(frames_folder, prompt, frames_num=-1):  # 仅生成前frames_num张图片，-1表示生成所有帧
+    # 获取文件夹中的所有图像文件
+    image_files = [f for f in os.listdir(keyframes_folder) if f.endswith(".png")]
+    image_files = sort_file_name(image_files)  # 按照文件名排序确保顺序正确
+
+    frames_count = len(image_files)
+    assert frames_num <= frames_count
+    if frames_num == -1:  # 生成所有帧
+        frames_num = frames_count
+
     frames_transfer_folder = f"{frames_folder}_transfer_reference"
     os.makedirs(frames_transfer_folder, exist_ok=True)
 
     first_reference_img = get_first_reference_img()
 
     for i in range(frames_num):
-        img_path = f"{frames_folder}/{i}.png"
+
+        img_path = os.path.join(frames_folder, image_files[i])
         control_net = ControlnetRequest(prompt, img_path)
         control_net.build_body()
-
-        # if i != 0:
-        #     control_net.add_reference(f"{frames_transfer_folder}/{i-1}.png")  # 参考第i-1张风格帧
-        # else:
-        #     control_net.add_reference(first_reference_img)  # 参考第1张风格图片
-
         control_net.add_reference(first_reference_img)  # 参考同一张风格图片
 
-        if i != 0:   # 参考前一张风格图片
-            control_net.add_reference(f"{frames_transfer_folder}/{i-1}.png")  # 参考第i-1张风格帧
+        if i > 0:   # 参考前一张风格图片
+            control_net.add_reference(os.path.join(frames_transfer_folder, image_files[i-1]))  # 参考前一张风格帧
 
         output = control_net.send_request()
         result = output['images'][0]
         image = Image.open(io.BytesIO(base64.b64decode(result.split(",", 1)[0])))
-        image.save(f"{frames_transfer_folder}/{i}.png")
-        print(f"{i}.png saved to {frames_transfer_folder}")
+        image.save(os.path.join(frames_transfer_folder, image_files[i]))
+        print(f"{image_files[i]} saved to {frames_transfer_folder}")
 
 
 if __name__ == '__main__':
@@ -253,14 +208,25 @@ if __name__ == '__main__':
 
 
     video_path = "videos/video2.mp4"
-    prompt = "<lora:lcm_lora_v15_weights:1>,masterpiece,best quality,highres,(simple white background),1girl,solo,blonde hair,blue eyes,a basketball,basketball uniform,anime screencap,"
-    # prompt = "<lora:lcm_lora_v15_weights:1>,masterpiece,best quality,highres,(simple white background),1girl,solo,white short hair,yellow eyes,a basketball,basketball uniform,anime screencap,"
+    file_name = video_path.split("/")[-1]
+    file_name = f"{''.join(file_name.split('.')[0:-1])}_{file_name.split('.')[-1]}"
+    frames_folder = f"outputs/video/{file_name}/frames"
+    keyframes_folder = f"outputs/video/{file_name}/keyframes"
 
-    # 切割视频帧
-    frames_folder = split_frames(video_path)
+    # prompt = "<lora:lcm_lora_v15_weights:1>,masterpiece,best quality,highres,(simple white background),1girl,solo,blonde hair,blue eyes,a basketball,basketball uniform,anime screencap,"
+    # prompt = "<lora:lcm_lora_v15_weights:1>,masterpiece,best quality,highres,(simple white background),1girl,solo,white short hair,yellow eyes,a basketball,basketball uniform,anime screencap,"
+    prompt = "<lora:lcm_lora_v15_weights:1>,masterpiece,best quality,highres,(simple white background),anime screencap,a basketball, 1boy,blue basketball uniform, male focus, blue short hair, solo, shorts, blue eyes,blue sportswear, full body, male child, shoes, sneakers, looking at viewer,white socks"
+
+    # 提取视频帧
+    extract_frames(video_path, output_folder=frames_folder)    # 提取所有帧
+    extract_keyframes(video_path, output_folder=keyframes_folder, frame_interval=3)   # 提取关键帧
+
     # 逐帧风格转换 无参考
     # multi_frames_transfer(frames_folder, prompt, frames_num=8)
-    # 逐帧风格转换 有参考
-    multi_frames_transfer_reference(frames_folder, prompt, frames_num=-1)
 
+    # 逐帧风格转换 有参考 生成全部帧
+    # multi_frames_transfer_reference(frames_folder, prompt, frames_num=-1)
+
+    # 逐帧风格转换 有参考 仅生成关键帧
+    multi_frames_transfer_reference(keyframes_folder, prompt, frames_num=-1)
 
