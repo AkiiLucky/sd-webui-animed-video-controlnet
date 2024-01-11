@@ -157,7 +157,7 @@ def multi_frames_transfer(frames_folder, prompt, frames_num):
 
 
 def get_first_reference_img():
-    return "images/first_reference_img_8.png"
+    return "images/first_reference_img_9.png"
 
 
 # 逐帧风格转换 有参考
@@ -207,18 +207,21 @@ if __name__ == '__main__':
     # image.save(f"outputs/images/file_name/{file_name}.png")
 
 
-    video_path = "videos/video2.mp4"
+    video_path = "videos/video6.mp4"
     file_name = video_path.split("/")[-1]
     file_name = f"{''.join(file_name.split('.')[0:-1])}_{file_name.split('.')[-1]}"
     frames_folder = f"outputs/video/{file_name}/frames"
     keyframes_folder = f"outputs/video/{file_name}/keyframes"
+    transfer_video_path = f"outputs/video/{file_name}/transfer_video.mp4"
+    transfer_video_path_interpolated = f"outputs/video/{file_name}/transfer_video_interpolated.mp4"
 
     # prompt = "<lora:lcm_lora_v15_weights:1>,masterpiece,best quality,highres,(simple white background),1girl,solo,blonde hair,blue eyes,a basketball,basketball uniform,anime screencap,"
     # prompt = "<lora:lcm_lora_v15_weights:1>,masterpiece,best quality,highres,(simple white background),1girl,solo,white short hair,yellow eyes,a basketball,basketball uniform,anime screencap,"
-    prompt = "<lora:lcm_lora_v15_weights:1>,masterpiece,best quality,highres,(simple white background),anime screencap,a basketball, 1boy,blue basketball uniform, male focus, blue short hair, solo, shorts, blue eyes,blue sportswear, full body, male child, shoes, sneakers, looking at viewer,white socks"
+    # prompt = "<lora:lcm_lora_v15_weights:1>,masterpiece,best quality,highres,(simple white background),anime screencap,a basketball, 1boy,blue basketball uniform, male focus, blue short hair, solo, shorts, blue eyes,blue sportswear, full body, male child, shoes, sneakers, looking at viewer,white socks"
+    prompt = "<lora:lcm_lora_v15_weights:1>,masterpiece,best quality,highres,(((simple white background))),anime screencap,1boy,male focus,blue hair,(solo),white shorts,blue eyes,white sportswear,full body,male child,red shoes,white socks,walking,"
 
     # 提取视频帧
-    extract_frames(video_path, output_folder=frames_folder)    # 提取所有帧
+    # extract_frames(video_path, output_folder=frames_folder)    # 提取所有帧
     extract_keyframes(video_path, output_folder=keyframes_folder, frame_interval=3)   # 提取关键帧
 
     # 逐帧风格转换 无参考
@@ -230,3 +233,8 @@ if __name__ == '__main__':
     # 逐帧风格转换 有参考 仅生成关键帧
     multi_frames_transfer_reference(keyframes_folder, prompt, frames_num=-1)
 
+    # 组帧
+    concatenate_keyframes_to_video(keyframes_folder=keyframes_folder+"_transfer_reference", output_video_path=transfer_video_path, fps=8)
+
+    # 补帧
+    generate_interpolated_frames(keyframes_folder=keyframes_folder+"_transfer_reference",  output_video_path=transfer_video_path_interpolated, fps=24)
