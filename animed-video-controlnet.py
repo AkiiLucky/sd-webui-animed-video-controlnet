@@ -236,5 +236,5 @@ if __name__ == '__main__':
     # 组帧
     concatenate_keyframes_to_video(keyframes_folder=keyframes_folder+"_transfer_reference", output_video_path=transfer_video_path, fps=8)
 
-    # 补帧
-    generate_interpolated_frames(keyframes_folder=keyframes_folder+"_transfer_reference",  output_video_path=transfer_video_path_interpolated, fps=24)
+    # 补帧(代码目前有问题)
+    # generate_interpolated_frames(keyframes_folder=keyframes_folder+"_transfer_reference",  output_video_path=transfer_video_path_interpolated, fps=24)
