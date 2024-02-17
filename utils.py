@@ -26,7 +26,8 @@ def sort_file_name(file_list):
 def extract_frames(video_path, output_folder):
     # 打开视频文件
     cap = cv2.VideoCapture(video_path)
-
+    # 创建输出文件夹
+    os.makedirs(output_folder, exist_ok=True)
     # 检查视频是否成功打开
     if not cap.isOpened():
         print("Error: Could not open video.")
@@ -75,6 +76,7 @@ def extract_keyframes(video_path, output_folder, frame_interval=3, dynamic_thres
     os.makedirs(output_folder, exist_ok=True)
 
     frame_count = 0
+    keyframe_count = 0
     prev_frame = None
     dynamic_threshold = None
 
@@ -106,12 +108,14 @@ def extract_keyframes(video_path, output_folder, frame_interval=3, dynamic_thres
             if np.sum(magnitude > dynamic_threshold) > 0:
                 frame_filename = f"{output_folder}/{frame_count}.png"
                 cv2.imwrite(frame_filename, frame)
-                print(f"Saved keyframe: {frame_filename}, Dynamic Threshold: {dynamic_threshold}")
+                #print(f"Saved keyframe: {frame_filename}, Dynamic Threshold: {dynamic_threshold}")
+                keyframe_count += 1
 
         prev_frame = frame_gray
         frame_count += 1
 
     cap.release()
+    print(f"{keyframe_count} keyframes extracted and saved to '{output_folder}'.")
 
 
 # 组帧成视频
