@@ -13,13 +13,14 @@ from utils import sort_file_name, extract_frames, count_files_in_folder, extract
     To use this example make sure you've done the following steps before executing:
     1. Ensure automatic1111 is running in api mode with the controlnet extension. 
        Use the following command in your terminal to activate:
-            ./webui.sh --no-half --api
+            ./webui.sh --no-half --api --listen
     2. Validate python environment meet package dependencies.
        If running in a local repo you'll likely need to pip install cv2, requests and PIL 
 """
 
 LOWVRAM = False
 PIXEL_PERFECT = False
+
 
 class ControlnetRequest:
     def __init__(self, prompt, img_path):
@@ -95,7 +96,7 @@ class ControlnetRequest:
                 "threshold_a": 512,
                 "threshold_b": 512,
                 "guidance_start": 0.0,
-                "guidance_end": 1.0,
+                "guidance_end": 1,
                 "control_mode": 0,
                 "pixel_perfect": PIXEL_PERFECT
                 # r'Fidelity': 1.0 #改了precessor.py中的源码
@@ -117,7 +118,7 @@ class ControlnetRequest:
                 "threshold_a": 512,
                 "threshold_b": 512,
                 "guidance_start": 0.0,
-                "guidance_end": 0.5,
+                "guidance_end": 1,
                 "control_mode": 0,
                 "pixel_perfect": PIXEL_PERFECT
             }
@@ -158,10 +159,16 @@ def single_frame_transfer(img_path, prompt):
     return result
 
 
-# 逐帧风格转换 无参考
-def multi_frames_transfer(frames_folder, prompt, frames_num):
-    count = count_files_in_folder(frames_folder)
-    assert frames_num <= count
+# 逐帧风格转换 有全局参考 无帧间参考
+def multi_frames_transfer(frames_folder, prompt, global_reference_img, frames_num=-1):
+    # 获取文件夹中的所有图像文件
+    image_files = [f for f in os.listdir(frames_folder) if f.endswith(".png")]
+    image_files = sort_file_name(image_files)  # 按照文件名排序确保顺序正确
+    frames_count = len(image_files)
+    assert frames_num <= frames_count
+    if frames_num == -1:  # 生成所有帧
+        frames_num = frames_count
+
     frames_transfer_folder = f"{frames_folder}_transfer"
     os.makedirs(frames_transfer_folder, exist_ok=True)
 
@@ -169,18 +176,19 @@ def multi_frames_transfer(frames_folder, prompt, frames_num):
         img_path = f"{frames_folder}/{i}.png"
         control_net = ControlnetRequest(prompt, img_path)
         control_net.build_body()
+        control_net.add_reference(global_reference_img)  # 参考同一张风格图片
         output = control_net.send_request()
         result = output['images'][0]
         image = Image.open(io.BytesIO(base64.b64decode(result.split(",", 1)[0])))
         image.save(f"{frames_transfer_folder}/{i}.png")
+        print(f"{image_files[i]} saved to {frames_transfer_folder}")
 
 
-# 逐帧风格转换 有参考
-def multi_frames_transfer_reference(frames_folder, prompt, first_reference_img, frames_num=-1):  # 仅生成前frames_num张图片，-1表示生成所有帧
+# 逐帧风格转换 有全局参考 有帧间参考
+def multi_frames_transfer_reference(frames_folder, prompt, global_reference_img, frames_num=-1):  # 仅生成前frames_num张图片，-1表示生成所有帧
     # 获取文件夹中的所有图像文件
     image_files = [f for f in os.listdir(frames_folder) if f.endswith(".png")]
     image_files = sort_file_name(image_files)  # 按照文件名排序确保顺序正确
-
     frames_count = len(image_files)
     assert frames_num <= frames_count
     if frames_num == -1:  # 生成所有帧
@@ -190,16 +198,14 @@ def multi_frames_transfer_reference(frames_folder, prompt, first_reference_img, 
     os.makedirs(frames_transfer_folder, exist_ok=True)
 
     for i in range(frames_num):
-
         img_path = os.path.join(frames_folder, image_files[i])
         control_net = ControlnetRequest(prompt, img_path)
         control_net.build_body()
-        control_net.add_reference(first_reference_img)  # 参考同一张风格图片
+        control_net.add_reference(global_reference_img)  # 参考同一张风格图片
 
         if i > 0:   # 参考前一张风格图片
             control_net.add_reference(os.path.join(frames_transfer_folder, image_files[i-1]))  # 参考前一张风格帧
-            control_net.add_reference_with_controlnet(os.path.join(frames_transfer_folder, image_files[i - 1]))  # 参考前一张风格帧
-
+            control_net.add_reference_with_controlnet(os.path.join(frames_transfer_folder, image_files[i-1]))  # 参考前一张风格帧
 
         output = control_net.send_request()
         result = output['images'][0]
@@ -214,25 +220,28 @@ def generate_anime_video(video_path, image_path, prompt, output_folder):
     keyframes_folder = os.path.join(output_folder, "keyframes")
 
     transfer_video_path = os.path.join(output_folder, "transfer_video.mp4")
-    transfer_keyframes_video_path = os.path.join(output_folder, "transfer_keyframes_video.mp4")
-    transfer_video_path_interpolated = f"transfer_video_interpolated.mp4"
+    transfer_reference_video_path = os.path.join(output_folder, "transfer_reference_video.mp4")
+    transfer_reference_keyframes_video_path = os.path.join(output_folder, "transfer_reference_keyframes_video.mp4")
+    # transfer_video_path_interpolated = f"transfer_video_interpolated.mp4"
 
     # 提取视频帧
     extract_frames(video_path, output_folder=frames_folder)    # 提取所有帧
     extract_keyframes(video_path, output_folder=keyframes_folder, frame_interval=3)   # 提取关键帧
 
-    # 逐帧风格转换 无参考
-    # multi_frames_transfer(frames_folder, prompt, frames_num=8)
+    # 逐帧风格转换 有全局参考 无帧间参考 生成全部帧
+    multi_frames_transfer(frames_folder, prompt, global_reference_img=image_path)
+    concatenate_keyframes_to_video(keyframes_folder=frames_folder + "_transfer",
+                                   output_video_path=transfer_video_path, fps=24)
 
-    # 逐帧风格转换 有参考 生成全部帧
-    multi_frames_transfer_reference(frames_folder, prompt, first_reference_img=image_path)
+    # 逐帧风格转换 有全局参考 有帧间参考 生成全部帧
+    multi_frames_transfer_reference(frames_folder, prompt, global_reference_img=image_path)
     concatenate_keyframes_to_video(keyframes_folder=frames_folder + "_transfer_reference",
-                                   output_video_path=transfer_video_path, fps=8)
+                                   output_video_path=transfer_reference_video_path, fps=24)
 
-    # 逐帧风格转换 有参考 仅生成关键帧
-    multi_frames_transfer_reference(keyframes_folder, prompt, first_reference_img=image_path)
+    # 逐帧风格转换 有全局参考 有帧间参考 仅生成关键帧
+    multi_frames_transfer_reference(keyframes_folder, prompt, global_reference_img=image_path)
     concatenate_keyframes_to_video(keyframes_folder=keyframes_folder + "_transfer_reference",
-                                   output_video_path=transfer_keyframes_video_path, fps=8)
+                                   output_video_path=transfer_reference_keyframes_video_path, fps=8)
 
     # 补帧(代码目前有问题)
     # generate_interpolated_frames(keyframes_folder=keyframes_folder+"_transfer_reference",  output_video_path=transfer_video_path_interpolated, fps=24)
