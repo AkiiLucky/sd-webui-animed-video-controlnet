@@ -1,3 +1,12 @@
 /reference_controlnet_dataset/original_videos_train/
 /reference_controlnet_dataset/original_videos_val/
-/test_dataset_results/
+/test_dataset_results/0_png/
+/test_dataset_results/1_png/
+/test_dataset_results/2_png/
+/test_dataset_results/3_png/
+/test_dataset_results/4_png/
+/test_dataset_results/5_png/
+/test_dataset_results/6_png/
+/test_dataset_results/7_png/
+/test_dataset_results/8_png/
+/test_dataset_results/9_png/
