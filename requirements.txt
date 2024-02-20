@@ -1,0 +1,7 @@
+opencv-python~=4.8.0.76
+numpy~=1.23.5
+gradio~=3.41.2
+requests~=2.25.1
+Pillow~=9.5.0
+scikit-image~=0.21.0
+scikit-learn~=1.2.2
