@@ -21,4 +21,4 @@ stable diffusion + controlnet（多个）
 - 安装sd-webui-controlnet插件
 - 安装本插件
 
-[演示demo.mp4](%D1%DD%CA%BEdemo.mp4)
+[demo.mp4](demo.mp4)
