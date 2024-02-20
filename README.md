@@ -14,7 +14,11 @@ stable diffusion + controlnet（多个）
 - 输入：一张参考动漫人物图像 + 一个真人实拍的动作视频
 - 输出：一个动漫人物的动作视频
 
+![web_ui.png](images%2Fweb_ui.png)
+
 ## 使用方法
 - 安装sd-webui
 - 安装sd-webui-controlnet插件
 - 安装本插件
+
+[演示demo.mp4](%D1%DD%CA%BEdemo.mp4)
