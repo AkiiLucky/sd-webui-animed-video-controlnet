@@ -4,7 +4,7 @@ sd-webui 扩展插件， 用于实现可控动漫视频生成（开发中）
 ## 底层原理
 stable diffusion + controlnet（多个）
 
-- stable diffusion: anything v5
+- stable diffusion model: anything v5
 - controlnet_1: openpose
 - controlnet_2: lineart
 - controlnet_3: reference

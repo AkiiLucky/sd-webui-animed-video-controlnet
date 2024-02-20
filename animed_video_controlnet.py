@@ -214,7 +214,7 @@ def multi_frames_transfer_reference(frames_folder, prompt, global_reference_img,
         print(f"{image_files[i]} saved to {frames_transfer_folder}")
 
 
-def generate_anime_video(video_path, image_path, prompt, output_folder):
+def generate_anime_video(video_path, image_path, prompt, output_folder, test_mode=True):
     os.makedirs(output_folder, exist_ok=True)
     frames_folder = os.path.join(output_folder, "frames")
     keyframes_folder = os.path.join(output_folder, "keyframes")
@@ -228,15 +228,16 @@ def generate_anime_video(video_path, image_path, prompt, output_folder):
     extract_frames(video_path, output_folder=frames_folder)    # 提取所有帧
     extract_keyframes(video_path, output_folder=keyframes_folder, frame_interval=3)   # 提取关键帧
 
-    # 逐帧风格转换 有全局参考 无帧间参考 生成全部帧
-    multi_frames_transfer(frames_folder, prompt, global_reference_img=image_path)
-    concatenate_keyframes_to_video(keyframes_folder=frames_folder + "_transfer",
-                                   output_video_path=transfer_video_path, fps=24)
+    if test_mode:
+        # 逐帧风格转换 有全局参考 无帧间参考 生成全部帧
+        multi_frames_transfer(frames_folder, prompt, global_reference_img=image_path)
+        concatenate_keyframes_to_video(keyframes_folder=frames_folder + "_transfer",
+                                       output_video_path=transfer_video_path, fps=24)
 
-    # 逐帧风格转换 有全局参考 有帧间参考 生成全部帧
-    multi_frames_transfer_reference(frames_folder, prompt, global_reference_img=image_path)
-    concatenate_keyframes_to_video(keyframes_folder=frames_folder + "_transfer_reference",
-                                   output_video_path=transfer_reference_video_path, fps=24)
+        # 逐帧风格转换 有全局参考 有帧间参考 生成全部帧
+        multi_frames_transfer_reference(frames_folder, prompt, global_reference_img=image_path)
+        concatenate_keyframes_to_video(keyframes_folder=frames_folder + "_transfer_reference",
+                                       output_video_path=transfer_reference_video_path, fps=24)
 
     # 逐帧风格转换 有全局参考 有帧间参考 仅生成关键帧
     multi_frames_transfer_reference(keyframes_folder, prompt, global_reference_img=image_path)

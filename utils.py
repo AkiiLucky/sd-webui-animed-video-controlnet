@@ -129,7 +129,8 @@ def concatenate_keyframes_to_video(keyframes_folder, output_video_path, fps=24):
     height, width, _ = first_frame.shape
 
     # 创建视频写入器
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # 使用MP4编解码器
+    # fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # 使用MP4编解码器
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')
     video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
 
     # 将关键帧逐一写入视频
@@ -152,7 +153,9 @@ def generate_interpolated_frames(keyframes_folder, output_video_path, fps=24):
     height, width, _ = first_frame.shape
 
     # 创建视频写入器
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # 使用MP4编解码器
+    # fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # 使用MP4编解码器
+    # fourcc = cv2.VideoWriter_fourcc(*'h264')
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')
     video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
 
     # 插值生成过渡帧并写入视频
