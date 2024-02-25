@@ -23,6 +23,6 @@ stable diffusion + controlnet（多个）
 - 安装本插件
 
 ## 演示视频
-[demo.mp4](demo.mp4)
+[demo.mp4](https://github.com/AkiiLucky/sd-webui-animed-video-controlnet/blob/main/demo.mp4)
 
-[demo.webm](demo.webm)
+[demo.webm](https://github.com/AkiiLucky/sd-webui-animed-video-controlnet/blob/main/demo.webm)
