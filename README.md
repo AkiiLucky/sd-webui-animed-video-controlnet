@@ -24,3 +24,5 @@ stable diffusion + controlnet（多个）
 
 ## 演示视频
 [demo.mp4](demo.mp4)
+
+[demo.webm](demo.webm)
