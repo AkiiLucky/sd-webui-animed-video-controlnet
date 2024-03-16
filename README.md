@@ -1,5 +1,6 @@
 # sd-webui-animed-video-controlnet
 sd-webui 扩展插件， 用于实现可控动漫视频生成（开发中）
+![input&output.png](images%2Finput%26output.png)
 
 ## 底层原理
 stable diffusion + controlnet（多个）
@@ -9,7 +10,7 @@ stable diffusion + controlnet（多个）
 - controlnet_2: lineart
 - controlnet_3: interframes_reference_controlnet （我自己训练的帧间一致性参考控制网络）
 
-![multicontrolnet.drawio.png](multicontrolnet.drawio.png)
+![multicontrolnet.drawio.png](images/multicontrolnet.drawio.png)
 
 ## 功能介绍
 - 输入：一张参考动漫人物图像 + 一个真人实拍的动作视频
