@@ -18,7 +18,7 @@ from utils import sort_file_name, extract_frames, count_files_in_folder, extract
        If running in a local repo you'll likely need to pip install cv2, requests and PIL 
 """
 
-LOWVRAM = False
+LOWVRAM = True
 PIXEL_PERFECT = False
 
 
@@ -205,7 +205,7 @@ def multi_frames_transfer_reference(frames_folder, prompt, global_reference_img,
 
         if i > 0:   # 参考前一张风格图片
             control_net.add_reference(os.path.join(frames_transfer_folder, image_files[i-1]))  # 参考前一张风格帧
-            control_net.add_reference_with_controlnet(os.path.join(frames_transfer_folder, image_files[i-1]))  # 参考前一张风格帧
+            #control_net.add_reference_with_controlnet(os.path.join(frames_transfer_folder, image_files[i-1]))  # 参考前一张风格帧
 
         output = control_net.send_request()
         result = output['images'][0]

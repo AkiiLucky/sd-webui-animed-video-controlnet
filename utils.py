@@ -67,51 +67,57 @@ def count_files_in_folder(folder_path):
 def extract_keyframes(video_path, output_folder, frame_interval=3, dynamic_threshold_decay=0.9):
     # 打开视频文件
     cap = cv2.VideoCapture(video_path)
-
     if not cap.isOpened():
         print("Error: Could not open video.")
         return
-
     # 创建输出文件夹
     os.makedirs(output_folder, exist_ok=True)
 
     frame_count = 0
     keyframe_count = 0
     prev_frame = None
+    prev_keyframe = None
     dynamic_threshold = None
+    frames_group = []
+    optical_flow_magnitude_group = []
 
     while True:
         ret, frame = cap.read()
-
         if not ret:
             break
 
         # 将当前帧转换为灰度图
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
         # 在第一帧之后才开始计算光流
-        if prev_frame is not None and frame_count % frame_interval == 0:
+        if prev_keyframe is None:
+            prev_keyframe = frame_gray
+        else:
             # 计算光流
-            flow = cv2.calcOpticalFlowFarneback(prev_frame, frame_gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-
+            flow = cv2.calcOpticalFlowFarneback(prev_keyframe, frame_gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
             # 计算光流矢量的幅值
             magnitude = np.sqrt(flow[..., 0] ** 2 + flow[..., 1] ** 2)
+            frames_group.append(frame_gray)
+            optical_flow_magnitude_group.append(np.mean(magnitude))
 
             # 动态调整阈值
-            if dynamic_threshold is None:
-                dynamic_threshold = np.mean(magnitude)
-            else:
-                dynamic_threshold = dynamic_threshold * dynamic_threshold_decay + np.mean(magnitude) * (
-                            1 - dynamic_threshold_decay)
+            # if dynamic_threshold is None:
+            #     dynamic_threshold = np.mean(magnitude)
+            # else:
+            #     dynamic_threshold = dynamic_threshold * dynamic_threshold_decay + np.mean(magnitude) * (
+            #                 1 - dynamic_threshold_decay)
 
-            # 使用动态阈值判断光流幅值是否足够大，将该帧标记为关键帧
-            if np.sum(magnitude > dynamic_threshold) > 0:
-                frame_filename = f"{output_folder}/{frame_count}.png"
-                cv2.imwrite(frame_filename, frame)
-                #print(f"Saved keyframe: {frame_filename}, Dynamic Threshold: {dynamic_threshold}")
+            # 每3帧提取一个关键帧
+            if frame_count % frame_interval == 0:
+                idx = np.argmax(optical_flow_magnitude_group)
+                frame_id = frame_count - frame_interval + idx
+                frame_filename = f"{output_folder}/{frame_id}.png"
+                cv2.imwrite(frame_filename, frames_group[idx])
+                print(f"Saved keyframe: {frame_filename}, magnitude: {np.mean(magnitude)}, ")
                 keyframe_count += 1
+                prev_keyframe = frames_group[idx]
+                frames_group = []
+                optical_flow_magnitude_group = []
 
-        prev_frame = frame_gray
         frame_count += 1
 
     cap.release()
